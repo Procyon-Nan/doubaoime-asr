@@ -6,7 +6,7 @@ from urllib import error, request
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Call the health endpoint")
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default="118.25.74.121")
     parser.add_argument("--port", type=int, default=9000)
     parser.add_argument("--path", default="/healthz")
     return parser

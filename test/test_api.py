@@ -99,7 +99,7 @@ def main() -> None:
     args = build_parser().parse_args()
     audio_path = Path(args.audio)
     audio_data = audio_path.read_bytes()
-    base_url = f"http://{args.host}:{args.port}"
+    base_url = f"http://118.25.74.121:{args.port}"
 
     legacy_status, legacy_body = post_binary(
         f"{base_url}{args.legacy_path}",
