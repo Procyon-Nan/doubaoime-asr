@@ -176,3 +176,175 @@ async def transcribe_realtime(
 ```python
 config = ASRConfig(credential_path="~/.config/doubaoime-asr/credentials.json")
 ```
+
+## API 服务
+
+项目根目录新增了 `api/` 目录，用于把现有能力封装成一个轻量 HTTP API 服务，同时保留原有 ESP32 桥接接收方式。
+
+### 启动方式
+
+可以直接运行新的 API 入口：
+
+```bash
+python3 -m api.cli
+```
+
+在 Linux 环境下，也可以直接使用根目录的启动脚本：
+
+```bash
+chmod +x ./start.sh
+./start.sh
+```
+
+也可以继续沿用原有脚本启动方式：
+
+```bash
+python3 examples/esp32_asr_bridge.py
+```
+
+默认启动后会提供以下接口：
+
+- 旧兼容接口：`POST /asr/transcribe`
+- 新标准接口：`POST /v1/stt/transcriptions`
+- 健康检查：`GET /healthz`
+
+默认参数：
+
+- `--host 0.0.0.0`
+- `--port 9000`
+- `--path /asr/transcribe`
+- `--standard-path /v1/stt/transcriptions`
+- `--health-path /healthz`
+- `--credential-path ./credentials.json`
+- `--max-body-bytes 320000`
+
+示例：
+
+```bash
+python3 -m api.cli --host 0.0.0.0 --port 9000 --credential-path ./credentials.json
+```
+
+### 旧 ESP32 兼容接口
+
+保持原有请求方式不变：
+
+```http
+POST /asr/transcribe
+Content-Type: application/octet-stream
+X-Sample-Rate: 16000
+X-Channels: 1
+X-Audio-Format: pcm_s16le
+X-Device-Id: esp32-001
+
+<raw pcm bytes>
+```
+
+请求要求：
+
+- body 为原始 PCM 字节流
+- 默认音频格式为 `16kHz / mono / pcm_s16le`
+- `X-Audio-Format` 当前仅支持 `pcm_s16le`
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "text": "识别结果"
+}
+```
+
+失败响应示例：
+
+```json
+{
+  "ok": false,
+  "error": "unsupported audio format"
+}
+```
+
+### 标准 STT 接口
+
+新增通用转写接口：
+
+```http
+POST /v1/stt/transcriptions
+```
+
+目前支持两种请求格式。
+
+#### 1. application/json + base64 音频
+
+请求示例：
+
+```json
+{
+  "audio": {
+    "content_base64": "<base64 audio>",
+    "format": "pcm_s16le",
+    "sample_rate": 16000,
+    "channels": 1
+  },
+  "options": {
+    "enable_punctuation": true,
+    "realtime": true
+  },
+  "device_id": "client-1"
+}
+```
+
+#### 2. multipart/form-data
+
+表单字段：
+
+- `file`: 音频文件或音频字节
+- `format`: 音频格式，当前仅支持 `pcm_s16le`
+- `sample_rate`: 采样率
+- `channels`: 声道数
+- `device_id`: 设备标识（可选）
+- `enable_punctuation`: 是否启用标点（可选）
+- `realtime`: 是否按实时节奏发送（可选）
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "text": "识别结果",
+  "segments": ["第一段", "第二段"],
+  "meta": {
+    "audio_format": "pcm_s16le",
+    "sample_rate": 16000,
+    "channels": 1,
+    "device_id": "client-1"
+  }
+}
+```
+
+失败响应示例：
+
+```json
+{
+  "ok": false,
+  "error": "invalid json body"
+}
+```
+
+### 测试脚本
+
+项目根目录新增了 `test/` 目录，提供了简单测试脚本：
+
+- `test/test_health.py`：测试 `/healthz`
+- `test/test_api.py`：同时测试旧兼容接口和新标准接口
+- `test/generate_test_pcm.py`：生成 `pcm_s16le` 测试音频
+
+示例：
+
+```bash
+python3 test/test_health.py --host 127.0.0.1 --port 9000
+python3 test/test_api.py ./audio.pcm --host 127.0.0.1 --port 9000
+python3 test/test_api.py ./audio.pcm --host 127.0.0.1 --port 9000 --multipart
+python3 test/generate_test_pcm.py
+python3 test/generate_test_pcm.py ./test/test_audio.pcm --duration 3 --frequency 523.25 --wav
+```
+
