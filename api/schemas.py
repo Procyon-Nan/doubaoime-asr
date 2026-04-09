@@ -56,5 +56,23 @@ def ok_transcription(
     }
 
 
+def ok_aliyun(result: str, *, task_id: str = "") -> dict[str, Any]:
+    return {
+        "task_id": task_id,
+        "result": result,
+        "status": 20000000,
+        "message": "SUCCESS",
+    }
+
+
+def error_aliyun(message: str, *, task_id: str = "", status_code: int = 40000000) -> dict[str, Any]:
+    return {
+        "task_id": task_id,
+        "result": "",
+        "status": status_code,
+        "message": message,
+    }
+
+
 def error(status: int, message: str) -> ErrorResponse:
     return ErrorResponse(status=status, payload={"ok": False, "error": message})

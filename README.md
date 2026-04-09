@@ -206,6 +206,7 @@ python3 examples/esp32_asr_bridge.py
 
 - 旧兼容接口：`POST /asr/transcribe`
 - 新标准接口：`POST /v1/stt/transcriptions`
+- Aliyun 兼容接口：`POST /stream/v1/asr`
 - 健康检查：`GET /healthz`
 
 默认参数：
@@ -214,6 +215,7 @@ python3 examples/esp32_asr_bridge.py
 - `--port 9000`
 - `--path /asr/transcribe`
 - `--standard-path /v1/stt/transcriptions`
+- `--aliyun-path /stream/v1/asr`
 - `--health-path /healthz`
 - `--credential-path ./credentials.json`
 - `--max-body-bytes 320000`
@@ -329,6 +331,87 @@ POST /v1/stt/transcriptions
   "error": "invalid json body"
 }
 ```
+
+### Aliyun 兼容接口
+
+为了兼容 `TouhouLittleMaid` 现有的 `aliyun` STT 请求方式，API 服务额外提供：
+
+```http
+POST /stream/v1/asr
+```
+
+这个接口不是直连阿里云，而是返回 **Aliyun 风格响应**，内部仍然使用当前项目已有的豆包识别能力。
+
+#### 请求格式
+
+请求头：
+
+- `Content-Type: application/octet-stream`
+- `X-NLS-Token: <token>`（当前仅作兼容读取，可为空）
+
+Query 参数中至少需要：
+
+- `appkey=<any-value>`
+- `format=wav`
+- `sample_rate=16000`
+- `enable_punctuation_prediction=true|false`
+
+其余像 `enable_inverse_text_normalization`、`enable_voice_detection`、`disfluency`、`vocabulary_id`、`customization_id` 等参数可以继续传入，服务会兼容接收，但当前不会参与内部识别逻辑。
+
+请求体要求：
+
+- body 必须是完整 **WAV** 音频字节
+- WAV 采样宽度当前仅支持 `16-bit`
+- 服务会在接口层先解包 WAV，再把 PCM 数据送入内部识别流程
+
+请求示例：
+
+```bash
+curl -X POST \
+  "http://127.0.0.1:9000/stream/v1/asr?appkey=test&format=wav&sample_rate=16000&enable_punctuation_prediction=true" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-NLS-Token: test-token" \
+  --data-binary @test/test_audio.wav
+```
+
+成功响应示例：
+
+```json
+{
+  "task_id": "",
+  "result": "识别结果",
+  "status": 20000000,
+  "message": "SUCCESS"
+}
+```
+
+失败响应示例：
+
+```json
+{
+  "task_id": "",
+  "result": "",
+  "status": 40000006,
+  "message": "invalid wav body"
+}
+```
+
+#### TouhouLittleMaid 对接
+
+如果你使用的是 `TouhouLittleMaid` 中的 `aliyun` STT 实现，可以把它的站点地址改成你的服务地址，例如：
+
+```text
+http://<server>:9000/stream/v1/asr
+```
+
+然后继续按它原本的方式发送：
+
+- `application/octet-stream`
+- WAV 音频 body
+- `X-NLS-Token`
+- URL query 参数
+
+客户端只要收到 HTTP 2xx 且响应 JSON 中 `status == 20000000`，就会把 `result` 当作最终识别文本。
 
 ### 测试脚本
 

@@ -12,6 +12,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=9000)
     parser.add_argument("--path", default="/asr/transcribe")
     parser.add_argument("--standard-path", default="/v1/stt/transcriptions")
+    parser.add_argument("--aliyun-path", default="/stream/v1/asr")
     parser.add_argument("--health-path", default="/healthz")
     parser.add_argument("--credential-path", default="./credentials.json")
     parser.add_argument("--max-body-bytes", type=int, default=320000)
@@ -25,6 +26,7 @@ def main() -> None:
         port=args.port,
         bridge_path=args.path,
         standard_path=args.standard_path,
+        aliyun_path=args.aliyun_path,
         health_path=args.health_path,
         credential_path=args.credential_path,
         max_body_bytes=args.max_body_bytes,
@@ -32,6 +34,7 @@ def main() -> None:
     server = ASRHTTPServer((options.host, options.port), ASRRequestHandler, options)
     print(f"[api] legacy endpoint: http://{options.host}:{options.port}{options.bridge_path}")
     print(f"[api] standard endpoint: http://{options.host}:{options.port}{options.standard_path}")
+    print(f"[api] aliyun endpoint: http://{options.host}:{options.port}{options.aliyun_path}")
     print(f"[api] health endpoint: http://{options.host}:{options.port}{options.health_path}")
     print(f"[api] credential path: {options.credential_path}")
     try:

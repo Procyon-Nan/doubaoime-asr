@@ -12,6 +12,7 @@ class ServerOptions:
     port: int = 9000
     bridge_path: str = "/asr/transcribe"
     standard_path: str = "/v1/stt/transcriptions"
+    aliyun_path: str = "/stream/v1/asr"
     health_path: str = "/healthz"
     credential_path: str = "./credentials.json"
     max_body_bytes: int = 320000
