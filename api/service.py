@@ -4,7 +4,7 @@ import asyncio
 import struct
 from dataclasses import dataclass
 
-from doubaoime_asr import ASRConfig, ASRError, ResponseType, transcribe_stream
+from doubaoime_asr import ASRConfig, ASRError, ASRResponse, ResponseType, transcribe_stream
 
 
 @dataclass(slots=True)
@@ -77,6 +77,7 @@ class ASRService:
         )
 
         final_parts: list[str] = []
+        error_response: ASRResponse | None = None
         async for resp in transcribe_stream(audio_data, config=config, realtime=realtime):
             text_val = getattr(resp, "text", "") or ""
             err_val = getattr(resp, "error_msg", "") or ""
@@ -85,7 +86,11 @@ class ASRService:
                 if text_val:
                     final_parts.append(text_val)
             elif resp.type == ResponseType.ERROR:
-                raise ASRError(err_val, resp)
+                error_response = resp
+                break
+
+        if error_response is not None:
+            raise ASRError(error_response.error_msg or "InternalError", error_response)
 
         result = "".join(final_parts)
         print(f"[done] {device_id}: final={result!r}  parts={len(final_parts)}")
