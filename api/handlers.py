@@ -320,7 +320,13 @@ class ASRRequestHandler(BaseHTTPRequestHandler):
         )
         appkey = self._query_value(params, "appkey", "")
         token = self.headers.get("X-NLS-Token", "")
-        device_id = f"tlm-aliyun:{appkey or token or 'unknown'}"
+        expected_token = self.server.options.aliyun_secret_key
+        if expected_token and token != expected_token:
+            return ErrorResponse(
+                status=HTTPStatus.UNAUTHORIZED,
+                payload=error_aliyun("invalid token", status_code=40000007),
+            )
+        device_id = f"tlm-aliyun:{appkey or 'unknown'}"
 
         if audio_format.lower() != "wav":
             return ErrorResponse(

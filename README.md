@@ -216,6 +216,7 @@ python3 examples/esp32_asr_bridge.py
 - `--path /asr/transcribe`
 - `--standard-path /v1/stt/transcriptions`
 - `--aliyun-path /stream/v1/asr`
+- 服务端固定密钥来自项目根目录 `secret_key`
 - `--health-path /healthz`
 - `--credential-path ./credentials.json`
 - `--max-body-bytes 320000`
@@ -342,12 +343,18 @@ POST /stream/v1/asr
 
 这个接口不是直连阿里云，而是返回 **Aliyun 风格响应**，内部仍然使用当前项目已有的豆包识别能力。
 
+服务端会从项目根目录 `secret_key` 文件读取固定密钥；仓库默认内容为：
+
+```text
+1145141919810
+```
+
 #### 请求格式
 
 请求头：
 
 - `Content-Type: application/octet-stream`
-- `X-NLS-Token: <token>`（当前仅作兼容读取，可为空）
+- `X-NLS-Token: <token>`（必须与项目根目录 `secret_key` 文件内容一致）
 
 Query 参数中至少需要：
 
@@ -403,6 +410,22 @@ curl -X POST \
 ```text
 http://<server>:9000/stream/v1/asr
 ```
+
+并在服务端准备固定密钥文件：
+
+```text
+./secret_key
+```
+
+默认内容是：
+
+```text
+1145141919810
+```
+
+如果你需要更换密钥，直接修改这个文件即可。
+
+然后在客户端把 `secret_key` 配成同一个值；`app_key` 仍然可以按客户端原逻辑任意填写。
 
 然后继续按它原本的方式发送：
 
